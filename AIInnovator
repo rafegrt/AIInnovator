@@ -1,0 +1,74 @@
+AIInnovator
+# AIInnovator.py
+
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from flask import Flask, request, jsonify
+
+app = Flask(__name__)
+
+# Data Processing
+def load_data(file_path):
+    return pd.read_csv(file_path)
+
+def clean_data(df):
+    df.dropna(inplace=True)
+    return df
+
+# Data Visualization
+def plot_data(df, x, y):
+    plt.figure(figsize=(10, 6))
+    plt.plot(df[x], df[y])
+    plt.xlabel(x)
+    plt.ylabel(y)
+    plt.title(f'{y} vs {x}')
+    plt.show()
+
+# Model Training
+def train_model(X, y):
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    model = LinearRegression()
+    model.fit(X_train, y_train)
+    return model, X_test, y_test
+
+# Flask Routes
+@app.route('/load', methods=['POST'])
+def load():
+    file_path = request.json['file_path']
+    df = load_data(file_path)
+    return df.to_json()
+
+@app.route('/clean', methods=['POST'])
+def clean():
+    data = request.json['data']
+    df = pd.read_json(data)
+    df = clean_data(df)
+    return df.to_json()
+
+@app.route('/plot', methods=['POST'])
+def plot():
+    data = request.json['data']
+    x = request.json['x']
+    y = request.json['y']
+    df = pd.read_json(data)
+    plot_data(df, x, y)
+    return 'Plot generated'
+
+@app.route('/train', methods=['POST'])
+def train():
+    data = request.json['data']
+    feature_column = request.json['feature_column']
+    target_column = request.json['target_column']
+    df = pd.read_json(data)
+    X = df[[feature_column]]
+    y = df[target_column]
+    model, X_test, y_test = train_model(X, y)
+    return jsonify({
+        'coefficients': model.coef_.tolist(),
+        'intercept': model.intercept_.tolist()
+    })
+
+if __name__ == "__main__":
+    app.run(debug=True)
